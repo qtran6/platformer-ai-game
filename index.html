@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Platformer AI Game</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <h1>Platformer AI Game</h1>
+      <div class="game-wrap">
+        <canvas id="game" width="960" height="540" aria-label="Platformer game"></canvas>
+
+        <div id="menu" class="overlay">
+          <button id="playBtn" class="btn" type="button">Play</button>
+        </div>
+
+        <div id="hud" class="hud hidden">
+          <span id="levelText">Level 1</span>
+          <span id="hintText">Move: A/D or Arrows | Jump: W, Up, or Space</span>
+        </div>
+
+        <div id="end" class="overlay hidden">
+          <p>You Win!</p>
+          <button id="restartBtn" class="btn" type="button">Play</button>
+        </div>
+      </div>
+    </main>
+
+    <script src="game.js"></script>
+  </body>
+</html>
