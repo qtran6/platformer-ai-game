@@ -451,9 +451,10 @@ function drawLevel() {
 
   if (game.boss) {
     const b = game.boss;
-    ctx.fillStyle = "#7a0018";
+    const isPhaseTwo = b.health <= b.maxHealth / 2;
+    ctx.fillStyle = isPhaseTwo ? "#c1121f" : "#ffd166";
     ctx.fillRect(b.x, b.y, b.w, b.h);
-    ctx.fillStyle = "#ff8fab";
+    ctx.fillStyle = isPhaseTwo ? "#ffe5e5" : "#7a4e00";
     ctx.fillRect(b.x + 12, b.y + 14, 10, 10);
     ctx.fillRect(b.x + 50, b.y + 14, 10, 10);
 
@@ -602,15 +603,23 @@ function startAudio() {
 
   const melody = [220, 277, 330, 392, 330, 277];
   const bossMelody = [196, 247, 294, 370, 330, 294, 247, 220];
+  const bossPhase2Melody = [220, 294, 370, 440, 494, 440, 370, 330];
   game.audio.musicTimer = setInterval(() => {
     if (game.state !== "playing") {
       return;
     }
+
     const inBossLevel = game.levelIndex === 3;
-    const track = inBossLevel ? bossMelody : melody;
+    const inBossPhase2 = inBossLevel && game.boss && game.boss.health <= game.boss.maxHealth / 2;
+    const track = inBossPhase2 ? bossPhase2Melody : inBossLevel ? bossMelody : melody;
     const f = track[game.audio.musicStep % track.length];
     game.audio.musicStep += 1;
-    if (inBossLevel) {
+
+    if (inBossPhase2) {
+      playTone(f, 0.2, "sawtooth", 0.14);
+      playTone(f * 1.5, 0.14, "square", 0.08);
+      playTone(f / 2, 0.2, "triangle", 0.06);
+    } else if (inBossLevel) {
       playTone(f, 0.18, "sawtooth", 0.12);
       playTone(f / 2, 0.18, "square", 0.05);
     } else {
