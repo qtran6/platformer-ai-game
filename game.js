@@ -11,13 +11,14 @@ const restartBtn = document.getElementById("restartBtn");
 
 const WIDTH = canvas.width;
 const HEIGHT = canvas.height;
+const GAME_VERSION = "v1.4.0";
 const GRAVITY = 1800;
 const MOVE_SPEED = 260;
 const JUMP_SPEED = 640;
 const BOSS_SPEED = 170;
 const BOSS_STOMPS_TO_DEFEAT = 4;
 const BOSS_PROJECTILE_SPEED = 290;
-const PLAYER_BOSS_HEALTH = 5;
+const PLAYER_BOSS_HEALTH = 4;
 
 const keys = new Set();
 
@@ -113,6 +114,7 @@ const game = {
   boss: null,
   playerHealth: 0,
   playerMaxHealth: 0,
+  playerDamageCooldown: 0,
   bossHintUntil: 0,
   audio: {
     enabled: false,
@@ -149,6 +151,7 @@ function loadLevel(index) {
   game.boss = null;
   game.playerHealth = 0;
   game.playerMaxHealth = 0;
+  game.playerDamageCooldown = 0;
 
   if (level.boss) {
     game.boss = {
@@ -226,9 +229,14 @@ function jump() {
   }
 }
 
-function damagePlayer() {
+function damagePlayer(amount) {
   if (game.boss && game.playerMaxHealth > 0) {
-    game.playerHealth = Math.max(0, game.playerHealth - 1);
+    if (game.playerDamageCooldown > 0) {
+      return false;
+    }
+
+    game.playerHealth = Math.max(0, game.playerHealth - amount);
+    game.playerDamageCooldown = 0.65;
     playSfx("hit");
     if (game.playerHealth <= 0) {
       resetLevel();
@@ -249,6 +257,7 @@ function update(dt) {
 
   const level = levels[game.levelIndex];
   const p = game.player;
+  game.playerDamageCooldown = Math.max(0, game.playerDamageCooldown - dt);
 
   handleInput();
 
@@ -286,7 +295,7 @@ function update(dt) {
 
   for (const hazard of level.hazards) {
     if (touchesHazard(p, hazard)) {
-      if (damagePlayer()) {
+      if (damagePlayer(1)) {
         return;
       }
       // Briefly pop player upward so repeated contact doesn't chain all health instantly.
@@ -367,9 +376,11 @@ function updateBoss(dt) {
     return inBounds;
   });
 
-  for (const proj of boss.projectiles) {
+  for (let i = boss.projectiles.length - 1; i >= 0; i -= 1) {
+    const proj = boss.projectiles[i];
     if (intersects(p, proj)) {
-      return damagePlayer();
+      boss.projectiles.splice(i, 1);
+      return damagePlayer(1);
     }
   }
 
@@ -393,7 +404,17 @@ function updateBoss(dt) {
     return false;
   }
 
-  return damagePlayer();
+  return damagePlayer(2);
+}
+
+function drawVersion() {
+  ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
+  ctx.fillRect(WIDTH - 102, HEIGHT - 28, 92, 18);
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "12px Trebuchet MS";
+  ctx.textAlign = "right";
+  ctx.fillText(GAME_VERSION, WIDTH - 14, HEIGHT - 14);
+  ctx.textAlign = "start";
 }
 
 function drawBackground(levelIndex) {
@@ -516,15 +537,18 @@ function drawLevel() {
 function draw() {
   if (game.state === "menu") {
     drawBackground(0);
+    drawVersion();
     return;
   }
 
   if (game.state === "won") {
     drawBackground(2);
+    drawVersion();
     return;
   }
 
   drawLevel();
+  drawVersion();
 }
 
 function gameLoop(ts) {
