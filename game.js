@@ -17,6 +17,7 @@ const JUMP_SPEED = 640;
 const BOSS_SPEED = 170;
 const BOSS_STOMPS_TO_DEFEAT = 4;
 const BOSS_PROJECTILE_SPEED = 290;
+const PLAYER_BOSS_HEALTH = 5;
 
 const keys = new Set();
 
@@ -110,6 +111,8 @@ const game = {
   },
   lastTime: 0,
   boss: null,
+  playerHealth: 0,
+  playerMaxHealth: 0,
   bossHintUntil: 0,
   audio: {
     enabled: false,
@@ -144,6 +147,8 @@ function loadLevel(index) {
   game.player.vy = 0;
   game.player.onGround = false;
   game.boss = null;
+  game.playerHealth = 0;
+  game.playerMaxHealth = 0;
 
   if (level.boss) {
     game.boss = {
@@ -160,6 +165,8 @@ function loadLevel(index) {
       shotTimer: 1.1,
       projectiles: []
     };
+    game.playerHealth = PLAYER_BOSS_HEALTH;
+    game.playerMaxHealth = PLAYER_BOSS_HEALTH;
     game.bossHintUntil = performance.now() + 5000;
   } else {
     game.bossHintUntil = 0;
@@ -219,6 +226,22 @@ function jump() {
   }
 }
 
+function damagePlayer() {
+  if (game.boss && game.playerMaxHealth > 0) {
+    game.playerHealth = Math.max(0, game.playerHealth - 1);
+    playSfx("hit");
+    if (game.playerHealth <= 0) {
+      resetLevel();
+      return true;
+    }
+    return false;
+  }
+
+  playSfx("hit");
+  resetLevel();
+  return true;
+}
+
 function update(dt) {
   if (game.state !== "playing") {
     return;
@@ -263,8 +286,11 @@ function update(dt) {
 
   for (const hazard of level.hazards) {
     if (touchesHazard(p, hazard)) {
-      playSfx("hit");
-      resetLevel();
+      if (damagePlayer()) {
+        return;
+      }
+      // Briefly pop player upward so repeated contact doesn't chain all health instantly.
+      p.vy = -JUMP_SPEED * 0.35;
       return;
     }
   }
@@ -343,9 +369,7 @@ function updateBoss(dt) {
 
   for (const proj of boss.projectiles) {
     if (intersects(p, proj)) {
-      playSfx("hit");
-      resetLevel();
-      return true;
+      return damagePlayer();
     }
   }
 
@@ -369,9 +393,7 @@ function updateBoss(dt) {
     return false;
   }
 
-  playSfx("hit");
-  resetLevel();
-  return true;
+  return damagePlayer();
 }
 
 function drawBackground(levelIndex) {
@@ -447,6 +469,22 @@ function drawLevel() {
     ctx.strokeStyle = "#ffe6ea";
     ctx.lineWidth = 2;
     ctx.strokeRect(barX, barY, barW, barH);
+
+    const hpBarX = 26;
+    const hpBarY = 26;
+    const hpBarW = 180;
+    const hpBarH = 16;
+    const hpRatio = game.playerMaxHealth ? game.playerHealth / game.playerMaxHealth : 0;
+    ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
+    ctx.fillRect(hpBarX, hpBarY, hpBarW, hpBarH);
+    ctx.fillStyle = "#7df9a7";
+    ctx.fillRect(hpBarX, hpBarY, hpBarW * hpRatio, hpBarH);
+    ctx.strokeStyle = "#d9ffe9";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(hpBarX, hpBarY, hpBarW, hpBarH);
+    ctx.fillStyle = "#ecfff4";
+    ctx.font = "bold 14px Trebuchet MS";
+    ctx.fillText("HP", hpBarX + hpBarW + 10, hpBarY + 13);
 
     for (const proj of b.projectiles) {
       ctx.fillStyle = "#ff6b6b";
@@ -563,13 +601,21 @@ function startAudio() {
   }
 
   const melody = [220, 277, 330, 392, 330, 277];
+  const bossMelody = [196, 247, 294, 370, 330, 294, 247, 220];
   game.audio.musicTimer = setInterval(() => {
     if (game.state !== "playing") {
       return;
     }
-    const f = melody[game.audio.musicStep % melody.length];
+    const inBossLevel = game.levelIndex === 3;
+    const track = inBossLevel ? bossMelody : melody;
+    const f = track[game.audio.musicStep % track.length];
     game.audio.musicStep += 1;
-    playTone(f, 0.16, "triangle", 0.08);
+    if (inBossLevel) {
+      playTone(f, 0.18, "sawtooth", 0.12);
+      playTone(f / 2, 0.18, "square", 0.05);
+    } else {
+      playTone(f, 0.16, "triangle", 0.08);
+    }
   }, 280);
 }
 
