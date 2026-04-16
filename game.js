@@ -11,7 +11,7 @@ const restartBtn = document.getElementById("restartBtn");
 
 const WIDTH = canvas.width;
 const HEIGHT = canvas.height;
-const GAME_VERSION = "v1.4.0";
+const GAME_VERSION = "v1.5.0";
 const GRAVITY = 1800;
 const MOVE_SPEED = 260;
 const JUMP_SPEED = 640;
@@ -116,6 +116,10 @@ const game = {
   playerMaxHealth: 0,
   playerDamageCooldown: 0,
   bossHintUntil: 0,
+  winEffects: {
+    confetti: [],
+    flashPulse: 0
+  },
   audio: {
     enabled: false,
     ctx: null,
@@ -182,15 +186,64 @@ function beginGame() {
   game.state = "playing";
   menu.classList.add("hidden");
   endOverlay.classList.add("hidden");
+  endOverlay.classList.remove("win-mode");
   hud.classList.remove("hidden");
+  game.winEffects.confetti = [];
+  game.winEffects.flashPulse = 0;
   loadLevel(0);
   startAudio();
 }
 
 function finishGame() {
   game.state = "won";
-  endText.textContent = "You Win!";
+  endText.textContent = "YOU WIN!!!";
+  endOverlay.classList.add("win-mode");
+  spawnWinEffects();
+  playSfx("win");
   endOverlay.classList.remove("hidden");
+}
+
+function spawnWinEffects() {
+  const palette = ["#ffd166", "#06d6a0", "#4cc9f0", "#ef476f", "#ffffff"];
+  const confetti = [];
+  for (let i = 0; i < 140; i += 1) {
+    confetti.push({
+      x: Math.random() * WIDTH,
+      y: Math.random() * HEIGHT - HEIGHT,
+      vx: (Math.random() - 0.5) * 160,
+      vy: 80 + Math.random() * 240,
+      size: 4 + Math.random() * 6,
+      rot: Math.random() * Math.PI,
+      vr: (Math.random() - 0.5) * 8,
+      color: palette[Math.floor(Math.random() * palette.length)]
+    });
+  }
+  game.winEffects.confetti = confetti;
+  game.winEffects.flashPulse = 0;
+}
+
+function updateWinEffects(dt) {
+  if (game.state !== "won") {
+    return;
+  }
+
+  game.winEffects.flashPulse += dt * 3;
+  for (const piece of game.winEffects.confetti) {
+    piece.x += piece.vx * dt;
+    piece.y += piece.vy * dt;
+    piece.rot += piece.vr * dt;
+
+    if (piece.y > HEIGHT + 12) {
+      piece.y = -10;
+      piece.x = Math.random() * WIDTH;
+    }
+    if (piece.x < -20) {
+      piece.x = WIDTH + 20;
+    }
+    if (piece.x > WIDTH + 20) {
+      piece.x = -20;
+    }
+  }
 }
 
 function resetLevel() {
@@ -417,6 +470,22 @@ function drawVersion() {
   ctx.textAlign = "start";
 }
 
+function drawWinEffects() {
+  const pulse = (Math.sin(game.winEffects.flashPulse) + 1) / 2;
+  const glowAlpha = 0.15 + pulse * 0.2;
+  ctx.fillStyle = `rgba(255, 215, 90, ${glowAlpha})`;
+  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+  for (const piece of game.winEffects.confetti) {
+    ctx.save();
+    ctx.translate(piece.x, piece.y);
+    ctx.rotate(piece.rot);
+    ctx.fillStyle = piece.color;
+    ctx.fillRect(-piece.size / 2, -piece.size / 2, piece.size, piece.size);
+    ctx.restore();
+  }
+}
+
 function drawBackground(levelIndex) {
   const palettes = [
     ["#0f2741", "#1d4f7c"],
@@ -543,6 +612,7 @@ function draw() {
 
   if (game.state === "won") {
     drawBackground(2);
+    drawWinEffects();
     drawVersion();
     return;
   }
@@ -556,6 +626,7 @@ function gameLoop(ts) {
   game.lastTime = ts;
 
   update(dt);
+  updateWinEffects(dt);
   draw();
 
   requestAnimationFrame(gameLoop);
@@ -616,6 +687,11 @@ function playSfx(name) {
     setTimeout(() => playTone(780, 0.16, "triangle", 0.22), 190);
   } else if (name === "bossShoot") {
     playTone(310, 0.06, "sawtooth", 0.12);
+  } else if (name === "win") {
+    playTone(523, 0.12, "triangle", 0.18);
+    setTimeout(() => playTone(659, 0.12, "triangle", 0.18), 120);
+    setTimeout(() => playTone(784, 0.22, "triangle", 0.2), 240);
+    setTimeout(() => playTone(1047, 0.28, "triangle", 0.22), 460);
   }
 }
 
