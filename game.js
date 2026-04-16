@@ -187,6 +187,7 @@ function beginGame() {
   menu.classList.add("hidden");
   endOverlay.classList.add("hidden");
   endOverlay.classList.remove("win-mode");
+  restartBtn.textContent = "Play";
   hud.classList.remove("hidden");
   game.winEffects.confetti = [];
   game.winEffects.flashPulse = 0;
@@ -198,6 +199,7 @@ function finishGame() {
   game.state = "won";
   endText.textContent = "YOU WIN!!!";
   endOverlay.classList.add("win-mode");
+  restartBtn.textContent = "Restart";
   spawnWinEffects();
   playSfx("win");
   endOverlay.classList.remove("hidden");
