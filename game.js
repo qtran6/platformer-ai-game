@@ -195,6 +195,17 @@ function beginGame() {
   startAudio();
 }
 
+function showMainMenu() {
+  game.state = "menu";
+  menu.classList.remove("hidden");
+  endOverlay.classList.add("hidden");
+  endOverlay.classList.remove("win-mode");
+  hud.classList.add("hidden");
+  restartBtn.textContent = "Play";
+  game.winEffects.confetti = [];
+  game.winEffects.flashPulse = 0;
+}
+
 function finishGame() {
   game.state = "won";
   endText.textContent = "YOU WIN!!!";
@@ -735,7 +746,7 @@ playBtn.addEventListener("click", () => {
 });
 
 restartBtn.addEventListener("click", () => {
-  beginGame();
+  showMainMenu();
 });
 
 window.addEventListener("keydown", (e) => {
